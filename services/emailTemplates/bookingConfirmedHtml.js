@@ -17,7 +17,7 @@ export const bookingConfirmedHtml = (booking, emergencyContact = {}, offers = []
   let html = `
   <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: auto; color: #333; border: 1px solid #ddd;">
     <div style="background-color: #2563EB; color: white; padding: 16px; text-align: center;">
-      <h1 style="margin: 0; font-size: 24px;">CasaStay</h1>
+      <h1 style="margin: 0; font-size: 24px;">🏨CasaStay</h1>
       <p style="margin: 4px 0; font-size: 14px;">Your comfort, our priority</p>
     </div>
 
