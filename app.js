@@ -25,10 +25,15 @@ app.set("trust proxy", true);
 // ✅ CORS config
 app.use(
   cors({
-    origin: [process.env.FRONTEND_URL, "http://localhost:5173"],
+    origin: [
+      process.env.FRONTEND_URL, 
+      "http://localhost:5173", 
+      "https://hotel-booking-frontend-beige.vercel.app"
+    ],
     credentials: true,
   })
 );
+
 
 // ⚠️ Stripe webhook needs to be BEFORE express.json()
 app.post(
