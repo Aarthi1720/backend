@@ -45,7 +45,7 @@ export const sendWelcomeEmail = async (to, name) => {
                 <p>Start exploring top-rated hotels, manage your bookings, and earn loyalty coins with every stay.</p>
 
                 <div style="text-align: center; margin: 30px 0;">
-                  <a href="https://yourapp.com/hotels" style="background: #2d89ef; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">
+                  <a href="https://hotel-booking-frontend-beige.vercel.app/hotels" style="background: #2d89ef; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">
                     🏝️ Explore Hotels
                   </a>
                 </div>
