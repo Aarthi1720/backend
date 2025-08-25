@@ -35,7 +35,7 @@ This is the backend of the Hotel Booking System built using **Node.js**, **Expre
 backend/
 ├── config/ # Cloudinary, DB connection
 │ └── cloudinary.js
-│ └── db.js
+│ 
 │
 ├── controllers/ # API logic (hotels, users, bookings, etc.)
 │ └── authController.js
@@ -47,7 +47,7 @@ backend/
 │
 ├── middleware/ # Auth and error handling
 │ └── auth.js
-│ └── errorHandler.js
+│ 
 │
 ├── models/ # Mongoose models
 │ └── User.js
