@@ -7,16 +7,27 @@ import { sendWelcomeEmail } from "../services/emailTemplates/sendWelcomeEmail.js
 export const registerUser = async (req, res) => {
   const { name, email, password } = req.body;
 
+  // ✅ Basic server-side validation
+  if (!name || !email || !password) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
+  const emailRegex = /^\S+@\S+\.\S+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ message: "Please enter a valid email address" });
+  }
+
   const existing = await User.findOne({ email });
-  if (existing)
+  if (existing) {
     return res.status(400).json({ message: "Email already exists" });
+  }
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
   const user = await User.create({
     name,
     email,
-    password, // plain password; will be hashed via pre-save hook
+    password, // gets hashed by pre-save
     isVerified: false,
     verificationOtp: otp,
     verificationOtpExpiry: Date.now() + 10 * 60 * 1000,
@@ -25,6 +36,7 @@ export const registerUser = async (req, res) => {
   await sendOtpEmail(email, otp);
   res.status(201).json({ message: "OTP sent for verification" });
 };
+
 
 export const verifyOtpAndActivateUser = async (req, res) => {
   const { email, otp } = req.body;
@@ -62,38 +74,63 @@ export const verifyOtpAndActivateUser = async (req, res) => {
   });
 };
 
+const isValidEmail = (e = "") => /^\S+@\S+\.\S+$/.test(String(e).trim());
+
 export const loginUser = async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ email });
+  try {
+    const { email, password } = req.body || {};
 
-  if (!user) return res.status(400).json({ message: "Invalid credentials" });
+    // Basic input checks
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+    if (!isValidEmail(email)) {
+      return res.status(400).json({ message: "Please enter a valid email address" });
+    }
 
-  const ok = await bcrypt.compare(password, user.password);
-  if (!ok) return res.status(400).json({ message: "Invalid credentials" });
+    // Normalize email
+    const normalizedEmail = String(email).trim().toLowerCase();
 
-  if (!user.isVerified) {
-    return res
-      .status(403)
-      .json({
-        message: "Please verify your account via OTP before logging in",
-      });
+    // Find user
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      // Do not reveal which part is wrong
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Password check
+    const ok = await bcrypt.compare(password, user.password);
+    if (!ok) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Require verification
+    if (!user.isVerified) {
+      return res
+        .status(403)
+        .json({ message: "Please verify your account via OTP before logging in" });
+    }
+
+    // Sign token
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    return res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (err) {
+    console.error("loginUser error:", err);
+    return res.status(500).json({ message: "Login failed. Please try again." });
   }
-
-  const token = jwt.sign(
-    { id: user._id, role: user.role },
-    process.env.JWT_SECRET,
-    { expiresIn: "7d" }
-  );
-
-  res.json({
-    token,
-    user: {
-      id: user._id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-    },
-  });
 };
 
 export const verifyResetOtp = async (req, res) => {
@@ -141,19 +178,30 @@ export const requestPasswordReset = async (req, res) => {
 export const resetPasswordWithOtp = async (req, res) => {
   const { email, otp, password } = req.body;
 
-  console.log("Incoming reset:", { email, otp, password });
+  // Basic validation
+  if (!email || !otp || !password) {
+    return res.status(400).json({ error: "All fields are required" });
+  }
+
+  const emailRegex = /^\S+@\S+\.\S+$/;
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: "Please enter a valid email address" });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: "Password must be at least 6 characters long" });
+  }
+
   const user = await User.findOne({ email });
-  console.log("Found user:", user?.email);
-  console.log("Stored OTP:", user?.resetOtp);
-  console.log("Expiry:", user?.resetOtpExpiry, "Now:", Date.now());
   if (!user || user.resetOtp !== otp || Date.now() > user.resetOtpExpiry) {
     return res.status(400).json({ error: "Invalid or expired OTP" });
   }
 
-  user.password = password; // hash in pre-save hook
+  user.password = password; // hashed via pre-save
   user.resetOtp = undefined;
   user.resetOtpExpiry = undefined;
   await user.save();
 
   res.json({ message: "Password reset successful" });
 };
+
