@@ -22,13 +22,23 @@ export const updateMe = async (req, res) => {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    // ✅ Block admins from uploading ID documents
+    // ✅ If uploading new file, reset status
     if (req.file && user.role !== "admin") {
       updates.idVerification = {
         documentUrl: `/${req.file.path.replace(/\\/g, "/")}`,
         status: "pending",
         method: "manual",
       };
+    }
+
+    // ✅ Extra safeguard: if frontend sent "forcePending", reset status
+    if (req.body?.forcePending === "true" && user.role !== "admin") {
+      if (user.idVerification) {
+        updates.idVerification = {
+          ...user.idVerification.toObject?.() ?? user.idVerification,
+          status: "pending",
+        };
+      }
     }
 
     const updatedUser = await User.findByIdAndUpdate(req.user.id, updates, {
@@ -42,14 +52,13 @@ export const updateMe = async (req, res) => {
   }
 };
 
+
 export const getFavorites = async (req, res) => {
   const user = await User.findById(req.user.id).populate("favorites");
   res.json(user.favorites);
 };
 
 export const addFavorite = async (req, res) => {
-  //     console.log('User:', req.user?.id);
-  // console.log('Hotel ID param:', req.params.hotelId);
   await User.findByIdAndUpdate(req.user?.id, {
     $addToSet: { favorites: req.params.hotelId },
   });
@@ -63,6 +72,8 @@ export const removeFavorite = async (req, res) => {
   res.json({ message: "Removed from favorites" });
 };
 
+const UPLOAD_ROOT = path.resolve("uploads");
+
 export const removeIdDocument = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
@@ -70,17 +81,23 @@ export const removeIdDocument = async (req, res) => {
       return res.status(404).json({ message: "No ID document found" });
     }
 
-    // Delete the file from the filesystem
-    const filePath = path.join(path.resolve(), user.idVerification.documentUrl);
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    // Clean up document path (e.g. "/uploads/ids/abc.png" → "uploads/ids/abc.png")
+    const relPath = user.idVerification.documentUrl.replace(/^\/+/, "");
+    const absPath = path.resolve(UPLOAD_ROOT, path.relative("uploads", relPath));
+
+    // Delete file safely
+    if (absPath.startsWith(UPLOAD_ROOT) && fs.existsSync(absPath)) {
+      fs.unlinkSync(absPath);
     }
 
-    // Remove from DB
-    user.idVerification = undefined;
+    // Reset KYC state
+    user.idVerification.documentUrl = null;  // ✅ null instead of ""
+    user.idVerification.status = "pending";
+    user.idVerification.method = user.idVerification.method || "manual";
+
     await user.save();
 
-    res.json({ message: "ID document removed" });
+    res.json({ message: "ID document removed and KYC reset to pending" });
   } catch (err) {
     console.error("Failed to remove ID document:", err);
     res.status(500).json({ message: "Server error" });

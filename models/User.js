@@ -29,7 +29,7 @@ const userSchema = new mongoose.Schema(
     verificationOtpExpiry: Date,
 
     idVerification: {
-      documentUrl: { type: String },
+      documentUrl: { type: String, default: null }, // ✅ default null
       status: {
         type: String,
         enum: ["pending", "verified", "rejected"],

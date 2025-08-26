@@ -13,6 +13,11 @@ export const getPendingIdVerifications = async (req, res) => {
       query["idVerification.status"] = status;
     }
 
+    // If we're asking for "pending", only show users who actually have a document
+   if (status === "pending") {
+     query["idVerification.documentUrl"] = { $exists: true, $ne: "" };
+   }
+
     if (search) {
       query.$or = [
         { name: { $regex: search, $options: "i" } },
@@ -42,8 +47,12 @@ export const getPendingIdVerifications = async (req, res) => {
 // ✅ POST /admin/id-verifications/:userId/:status
 export const updateIdVerificationStatus = async (req, res) => {
   const { userId, status } = req.params;
+  // Frontend sends "approve" | "reject"; map to model values
+  const mapped =
+    status === "approve" ? "verified" :
+    status === "reject"  ? "rejected" : status;
 
-  if (!["verified", "rejected"].includes(status)) {
+  if (!["verified", "rejected"].includes(mapped)) {
     return res.status(400).json({ message: "Invalid status" });
   }
 
@@ -53,10 +62,10 @@ export const updateIdVerificationStatus = async (req, res) => {
       return res.status(404).json({ message: "User or ID not found" });
     }
 
-    user.idVerification.status = status;
+     user.idVerification.status = mapped;
     await user.save();
 
-    res.json({ message: `Marked as ${status}`, user });
+    res.json({ message: `Marked as ${mapped}`, user });
   } catch (err) {
     console.error("Verification update failed:", err.message);
     res.status(500).json({ message: "Server error" });

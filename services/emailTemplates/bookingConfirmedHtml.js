@@ -84,7 +84,7 @@ export const bookingConfirmedHtml = (booking, emergencyContact = {}, offers = []
     </div>
 
     <div style="background-color: #f4f4f4; padding: 16px; text-align: center; font-size: 12px; color: #777;">
-      <p style="margin: 4px 0;">CasaStay · 123 Comfort Lane · Coimbatore, TN</p>
+      <p style="margin: 4px 0;">CasaStay · 123 Comfort Lane · India</p>
       <p style="margin: 4px 0;">This is an automated message. Please do not reply.</p>
     </div>
   </div>
